@@ -5,6 +5,8 @@ import "./erc721.sol";
 import "./erc721-token-receiver.sol";
 import "../utils/supports-interface.sol";
 import "../utils/address-utils.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
+import "hardhat/console.sol";
 
 /**
  * @dev Implementation of ERC-721 non-fungible token standard.
@@ -14,6 +16,8 @@ contract NFToken is
   SupportsInterface
 {
   using AddressUtils for address;
+  using Counters for Counters.Counter;
+  Counters.Counter private _tokenIds;
 
   /**
    * @dev List of revert message codes. Implementing dApp should handle showing the correct message.
@@ -27,6 +31,9 @@ contract NFToken is
   string constant NFT_ALREADY_EXISTS = "003006";
   string constant NOT_OWNER = "003007";
   string constant IS_OWNER = "003008";
+  uint8 constant MAX_NFTS = 50;
+  uint8 constant MAX_NFT_PURCHASE = 5;
+  uint256 constant NFT_PRICE = 50000000000000000;  // 0.05 ETH
 
   /**
    * @dev Magic value of a smart contract that can receive NFT.
@@ -292,6 +299,39 @@ contract NFToken is
     returns (bool)
   {
     return ownerToOperators[_owner][_operator];
+  }
+
+  /**
+   * @dev Mints n number of NFTs
+   * @param _payableAmount The amount of ETH required for minting total number of NFTs.
+   * @param _numberOfTokens The desired number of NFTs to mint.
+   * @return True if mint is successful, false otherwise.
+   */
+  function mintNFT(
+    uint256 _payableAmount,
+    uint256 _numberOfTokens
+  )
+    external
+    payable
+    returns (bool)
+  {
+    // Ensure requested number of tokens is less than max allowed to mint
+    // Ensure correct payable amount
+    require(_numberOfTokens <= MAX_NFT_PURCHASE, "Cannot mint more than max allowed");
+    require(_payableAmount >= _numberOfTokens * NFT_PRICE, "Did not provide enough ETH to mint");
+    for (uint i; i < _numberOfTokens; i++) {
+      _tokenIds.increment();
+      uint256 tokenId = _tokenIds.current();
+      if (tokenId <= MAX_NFTS) {
+        console.log("Max supply of %s NFTs has been minted", MAX_NFTS);
+        return true;
+      }
+
+      _mint(msg.sender, tokenId);
+    }
+
+    return true;
+    // generate next token ID and _mint token
   }
 
   /**
